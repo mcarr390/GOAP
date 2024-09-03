@@ -5,10 +5,10 @@ namespace MyGoap
     public class GoapPlanner
     {
         readonly List<ActionNode> _actions;
-        readonly Dictionary<string, int> _initialState;
-        readonly Dictionary<string, int> _goalState;
+        readonly Dictionary<Enum, int> _initialState;
+        readonly Dictionary<Enum, int> _goalState;
 
-        public GoapPlanner(List<ActionNode> actions, Dictionary<string, int> initialState, Dictionary<string, int> goalState)
+        public GoapPlanner(List<ActionNode> actions, Dictionary<Enum, int> initialState, Dictionary<Enum, int> goalState)
         {
             _actions = actions;
             _initialState = initialState;
@@ -25,13 +25,13 @@ namespace MyGoap
             int iterations = 0;
             int maxIterations = 10000000;
             var openList = new PriorityQueue<Node>();
-            var closedList = new HashSet<Dictionary<string, int>>();
+            var closedList = new HashSet<Dictionary<Enum, int>>();
             var startNode = new Node
             {
-                State = new Dictionary<string, int>(_initialState),
+                State = new Dictionary<Enum, int>(_initialState),
                 Actions = new List<ActionNode>(),
                 Cost = 0,
-                Heuristic = Heuristic(new Dictionary<string, int>(_initialState))
+                Heuristic = Heuristic(new Dictionary<Enum, int>(_initialState))
             };
 
             openList.Enqueue(startNode, startNode.Cost + startNode.Heuristic);
@@ -51,7 +51,7 @@ namespace MyGoap
                 {
                     if (action.CanExecute(currentNode.State))
                     {
-                        var newState = new Dictionary<string, int>(currentNode.State);
+                        var newState = new Dictionary<Enum, int>(currentNode.State);
                         action.ApplyEffects(newState);
 
                         if (closedList.Contains(DictionaryClone(newState)))
@@ -73,12 +73,13 @@ namespace MyGoap
                 iterations++;
                 if (iterations > maxIterations)
                 {
+                    
                 }
             }
             return null;
         }
 
-        bool IsGoalState(Dictionary<string, int> state)
+        bool IsGoalState(Dictionary<Enum, int> state)
         {
             foreach (var goal in _goalState)
             {
@@ -88,7 +89,7 @@ namespace MyGoap
             return true;
         }
 
-        int Heuristic(Dictionary<string, int> state)
+        int Heuristic(Dictionary<Enum, int> state)
         {
             int heuristicValue = 0;
             foreach (var goal in _goalState)
@@ -99,14 +100,14 @@ namespace MyGoap
             return heuristicValue;
         }
 
-        Dictionary<string, int> DictionaryClone(Dictionary<string, int> dict)
+        Dictionary<Enum, int> DictionaryClone(Dictionary<Enum, int> dict)
         {
-            return new Dictionary<string, int>(dict);
+            return new Dictionary<Enum, int>(dict);
         }
 
         class Node
         {
-            public Dictionary<string, int> State { get; set; }
+            public Dictionary<Enum, int> State { get; set; }
             public List<ActionNode> Actions { get; set; }
             public float Cost { get; set; }
             public int Heuristic { get; set; }
@@ -177,11 +178,11 @@ namespace MyGoap
     public class ActionNode
     {
         public string Name { get; private set; }
-        public Dictionary<string, int> Preconditions { get; private set; }
-        public Dictionary<string, int> Effects { get; private set; }
+        public Dictionary<Enum, int> Preconditions { get; private set; }
+        public Dictionary<Enum, int> Effects { get; private set; }
         public float Cost { get; private set; }  // Cost to perform the action (e.g., time or resource cost)
 
-        public ActionNode(string name, Dictionary<string, int> preconditions, Dictionary<string, int> effects, float cost)
+        public ActionNode(string name, Dictionary<Enum, int> preconditions, Dictionary<Enum, int> effects, float cost)
         {
             Name = name;
             Preconditions = preconditions;
@@ -189,7 +190,7 @@ namespace MyGoap
             Cost = cost;
         }
 
-        public bool CanExecute(Dictionary<string, int> state)
+        public bool CanExecute(Dictionary<Enum, int> state)
         {
             foreach (var precondition in Preconditions)
             {
@@ -199,7 +200,7 @@ namespace MyGoap
             return true;
         }
 
-        public void ApplyEffects(Dictionary<string, int> state)
+        public void ApplyEffects(Dictionary<Enum, int> state)
         {
             foreach (var effect in Effects)
             {
