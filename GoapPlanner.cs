@@ -36,7 +36,7 @@ namespace MyGoap
 
             openList.Enqueue(startNode, startNode.Cost + startNode.Heuristic);
 
-            while (openList.Count > 0)
+            while (openList.Count > 0 && iterations < maxIterations)
             {
                 var currentNode = openList.Dequeue();
                 
@@ -182,6 +182,7 @@ namespace MyGoap
         public Dictionary<Enum, int> Effects { get; private set; }
         public float Cost { get; private set; }  // Cost to perform the action (e.g., time or resource cost)
 
+        public int Id { get; set; }
         public ActionNode(string name, Dictionary<Enum, int> preconditions, Dictionary<Enum, int> effects, float cost)
         {
             Name = name;
