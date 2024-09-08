@@ -11,7 +11,7 @@ public class GoapAgent
 
     List<ActionNode> _actions = new List<ActionNode>();
     
-    public void GetAllActions(Action<List<ActionNode>> actionCallback, List<ActionNode> actions, Dictionary<Enum, int> initialState, Dictionary<Enum, int> goalState)
+    public void GetAllActions(Action<List<ActionNode>> actionCallback, List<ActionNode> actions, Dictionary<string, int> initialState, Dictionary<string, int> goalState, Vector3 startingPos)
     {
         
         // Cancel any existing planning task if needed
@@ -22,7 +22,7 @@ public class GoapAgent
         }
 
         // Start the planning task on a separate thread
-        _planningTask = Task.Run(() => GetActions(actions, initialState, goalState));
+        _planningTask = Task.Run(() => GetActions(actions, initialState, goalState, startingPos));
         _planningTask.ContinueWith(task =>
         {
             if (task.Status != TaskStatus.RanToCompletion)
@@ -35,7 +35,7 @@ public class GoapAgent
         });
     }
 
-    public List<ActionNode> GetActions(List<ActionNode> actions, Dictionary<Enum, int> initialState, Dictionary<Enum, int> goalState)
+    public List<ActionNode> GetActions(List<ActionNode> actions, Dictionary<string, int> initialState, Dictionary<string, int> goalState, Vector3 startingPos)
     {
         //int coinCost = 5;
 
@@ -51,7 +51,7 @@ public class GoapAgent
 
         _goapPlanner = new GoapPlanner(actions, initialState, goalState);
 
-        return _goapPlanner.StartPlanner();
+        return _goapPlanner.StartPlanner(startingPos);
     }
 }
 

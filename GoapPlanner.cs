@@ -1,85 +1,103 @@
 using System;
 using System.Collections.Generic;
+using UnityEngine;
+
 namespace MyGoap
 {
     public class GoapPlanner
     {
         readonly List<ActionNode> _actions;
-        readonly Dictionary<Enum, int> _initialState;
-        readonly Dictionary<Enum, int> _goalState;
+        readonly Dictionary<string, int> _initialState;
+        readonly Dictionary<string, int> _goalState;
 
-        public GoapPlanner(List<ActionNode> actions, Dictionary<Enum, int> initialState, Dictionary<Enum, int> goalState)
+        public GoapPlanner(List<ActionNode> actions, Dictionary<string, int> initialState, Dictionary<string, int> goalState)
         {
             _actions = actions;
             _initialState = initialState;
             _goalState = goalState;
         }
-        public List<ActionNode> StartPlanner()
+        public List<ActionNode> StartPlanner(Vector3 startingPos)
         {
-            List<ActionNode> plan = Plan();
+            List<ActionNode> plan = Plan(startingPos);
             return plan;
         }
 
-        List<ActionNode> Plan()
+List<ActionNode> Plan(Vector3 startingPos)
+{
+    int iterations = 0;
+    int maxIterations = 100000;
+    var openList = new PriorityQueue<Node>();
+    var closedList = new HashSet<Dictionary<string, int>>();
+    
+    // Start node with initial state and starting position
+    var startNode = new Node
+    {
+        State = new Dictionary<string, int>(_initialState),
+        Actions = new List<ActionNode>(),
+        Cost = 0,
+        Position = startingPos,  // Set initial position
+        Heuristic = Heuristic(new Dictionary<string, int>(_initialState))
+    };
+
+    openList.Enqueue(startNode, startNode.Cost + startNode.Heuristic);
+
+    while (openList.Count > 0 && iterations < maxIterations)
+    {
+        var currentNode = openList.Dequeue();
+
+        if (IsGoalState(currentNode.State))
         {
-            int iterations = 0;
-            int maxIterations = 10000000;
-            var openList = new PriorityQueue<Node>();
-            var closedList = new HashSet<Dictionary<Enum, int>>();
-            var startNode = new Node
-            {
-                State = new Dictionary<Enum, int>(_initialState),
-                Actions = new List<ActionNode>(),
-                Cost = 0,
-                Heuristic = Heuristic(new Dictionary<Enum, int>(_initialState))
-            };
-
-            openList.Enqueue(startNode, startNode.Cost + startNode.Heuristic);
-
-            while (openList.Count > 0 && iterations < maxIterations)
-            {
-                var currentNode = openList.Dequeue();
-                
-                if (IsGoalState(currentNode.State))
-                {
-                    return currentNode.Actions;
-                }
-
-                closedList.Add(DictionaryClone(currentNode.State));
-
-                foreach (var action in _actions)
-                {
-                    if (action.CanExecute(currentNode.State))
-                    {
-                        var newState = new Dictionary<Enum, int>(currentNode.State);
-                        action.ApplyEffects(newState);
-
-                        if (closedList.Contains(DictionaryClone(newState)))
-                            continue;
-
-                        var newActions = new List<ActionNode>(currentNode.Actions) { action };
-                        var newCost = currentNode.Cost + action.Cost;
-                        var newNode = new Node
-                        {
-                            State = newState,
-                            Actions = newActions,
-                            Cost = newCost,
-                            Heuristic = Heuristic(newState)
-                        };
-
-                        openList.Enqueue(newNode, newNode.Cost + newNode.Heuristic);
-                    }
-                }
-                iterations++;
-                if (iterations > maxIterations)
-                {
-                    
-                }
-            }
-            return null;
+            // Goal reached, return the action plan
+            return currentNode.Actions;
         }
 
-        bool IsGoalState(Dictionary<Enum, int> state)
+        closedList.Add(DictionaryClone(currentNode.State));
+
+        foreach (var action in _actions)
+        {
+            if (action.CanExecute(currentNode.State))
+            {
+                // Calculate new state after applying the action's effects
+                var newState = new Dictionary<string, int>(currentNode.State);
+                action.ApplyEffects(newState);
+
+                if (closedList.Contains(DictionaryClone(newState)))
+                    continue;
+
+                // Update the position cost (travel distance between current node and action)
+                var distance = Distance(currentNode.Position, action.StartingPos);
+                if (float.IsNaN(distance) || float.IsInfinity(distance))
+                {
+                    Debug.LogError("Invalid distance calculation");
+                    continue;
+                }
+
+                // Combine the action's intrinsic cost and the travel distance
+                var travelCost = distance;
+                var actionCost = action.Cost + travelCost;  // BaseCost is the intrinsic action cost
+
+                var newCost = currentNode.Cost + actionCost;
+
+                // Create a new node with the updated state, actions, position, and cost
+                var newNode = new Node
+                {
+                    Position = action.StartingPos,  // Move NPC to the action's position
+                    State = newState,
+                    Actions = new List<ActionNode>(currentNode.Actions) { action },
+                    Cost = newCost,
+                    Heuristic = Heuristic(newState)
+                };
+
+                // Add new node to the open list
+                openList.Enqueue(newNode, newNode.Cost + newNode.Heuristic);
+            }
+        }
+
+        iterations++;
+    }
+    return null;  // No valid plan found
+}
+        bool IsGoalState(Dictionary<string, int> state)
         {
             foreach (var goal in _goalState)
             {
@@ -89,7 +107,7 @@ namespace MyGoap
             return true;
         }
 
-        int Heuristic(Dictionary<Enum, int> state)
+        int Heuristic(Dictionary<string, int> state)
         {
             int heuristicValue = 0;
             foreach (var goal in _goalState)
@@ -100,14 +118,25 @@ namespace MyGoap
             return heuristicValue;
         }
 
-        Dictionary<Enum, int> DictionaryClone(Dictionary<Enum, int> dict)
+        Dictionary<string, int> DictionaryClone(Dictionary<string, int> dict)
         {
-            return new Dictionary<Enum, int>(dict);
+            return new Dictionary<string, int>(dict);
+        }
+        
+        public static float Distance(Vector3 v1, Vector3 v2)
+        {
+            float diffX = v2.x - v1.x;
+            float diffY = v2.y - v1.y;
+            float diffZ = v2.z - v1.z;
+        
+            return (float)Math.Sqrt(diffX * diffX + diffY * diffY + diffZ * diffZ);
         }
 
         class Node
         {
-            public Dictionary<Enum, int> State { get; set; }
+            public float TotalDistanceTraveled { get; set; }
+            public Vector3 Position { get; set; }
+            public Dictionary<string, int> State { get; set; }
             public List<ActionNode> Actions { get; set; }
             public float Cost { get; set; }
             public int Heuristic { get; set; }
@@ -178,20 +207,22 @@ namespace MyGoap
     public class ActionNode
     {
         public string Name { get; private set; }
-        public Dictionary<Enum, int> Preconditions { get; private set; }
-        public Dictionary<Enum, int> Effects { get; private set; }
-        public float Cost { get; private set; }  // Cost to perform the action (e.g., time or resource cost)
+        public Dictionary<string, int> Preconditions { get; private set; }
+        public Dictionary<string, int> Effects { get; private set; }
+        public float Cost { get; set; }  // Cost to perform the action (e.g., time or resource cost)
 
+        public Vector3 StartingPos { get; set; }
         public int Id { get; set; }
-        public ActionNode(string name, Dictionary<Enum, int> preconditions, Dictionary<Enum, int> effects, float cost)
+        public ActionNode(string name, Dictionary<string, int> preconditions, Dictionary<string, int> effects, float cost, Vector3 startingPos)
         {
             Name = name;
             Preconditions = preconditions;
             Effects = effects;
             Cost = cost;
+            StartingPos = startingPos;
         }
 
-        public bool CanExecute(Dictionary<Enum, int> state)
+        public bool CanExecute(Dictionary<string, int> state)
         {
             foreach (var precondition in Preconditions)
             {
@@ -201,7 +232,7 @@ namespace MyGoap
             return true;
         }
 
-        public void ApplyEffects(Dictionary<Enum, int> state)
+        public void ApplyEffects(Dictionary<string, int> state)
         {
             foreach (var effect in Effects)
             {
