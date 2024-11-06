@@ -1,57 +1,59 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using MyGoap;
 using UnityEngine;
 
-public class GoapAgent
+namespace GOAP
 {
-    GoapPlanner _goapPlanner;
-    Task<List<ActionNode>> _planningTask;
-
-    List<ActionNode> _actions = new List<ActionNode>();
-    
-    public void GetAllActions(Action<List<ActionNode>> actionCallback, List<ActionNode> actions, Dictionary<string, int> initialState, Dictionary<string, int> goalState, Vector3 startingPos)
+    public class GoapAgent
     {
-        
-        // Cancel any existing planning task if needed
-        if (_planningTask != null && !_planningTask.IsCompleted)
-        {
-            Debug.Log("uh oh");
-            return;
-        }
+        GoapPlanner _goapPlanner;
+        Task<List<ActionNode>> _planningTask;
 
-        // Start the planning task on a separate thread
-        _planningTask = Task.Run(() => GetActions(actions, initialState, goalState, startingPos));
-        _planningTask.ContinueWith(task =>
+        List<ActionNode> _actions = new List<ActionNode>();
+    
+        public void GetAllActions(Action<List<ActionNode>> actionCallback, List<ActionNode> actions, Dictionary<string, int> initialState, Dictionary<string, int> goalState, Vector3 startingPos)
         {
-            if (task.Status != TaskStatus.RanToCompletion)
+        
+            // Cancel any existing planning task if needed
+            if (_planningTask != null && !_planningTask.IsCompleted)
             {
                 Debug.Log("uh oh");
                 return;
             }
-            _actions = task.Result;
-            actionCallback.Invoke(_actions);
-        });
-    }
 
-    public List<ActionNode> GetActions(List<ActionNode> actions, Dictionary<string, int> initialState, Dictionary<string, int> goalState, Vector3 startingPos)
-    {
-        //int coinCost = 5;
+            // Start the planning task on a separate thread
+            _planningTask = Task.Run(() => GetActions(actions, initialState, goalState, startingPos));
+            _planningTask.ContinueWith(task =>
+            {
+                if (task.Status != TaskStatus.RanToCompletion)
+                {
+                    Debug.Log("uh oh");
+                    return;
+                }
+                _actions = task.Result;
+                actionCallback.Invoke(_actions);
+            });
+        }
 
-        //float timeCost = (float)coinCost / (float)coinsPerHour;
+        public List<ActionNode> GetActions(List<ActionNode> actions, Dictionary<string, int> initialState, Dictionary<string, int> goalState, Vector3 startingPos)
+        {
+            //int coinCost = 5;
 
-        //int timeCostToPurchaseWood = 1;
-        //int timeCostToGatherWood = 1;
+            //float timeCost = (float)coinCost / (float)coinsPerHour;
 
-        //Debug.Log($"The cost is {coinCost}, it takes you {timeCost} hours to make that");
+            //int timeCostToPurchaseWood = 1;
+            //int timeCostToGatherWood = 1;
 
-        // Initialize example actions
+            //Debug.Log($"The cost is {coinCost}, it takes you {timeCost} hours to make that");
+
+            // Initialize example actions
         
 
-        _goapPlanner = new GoapPlanner(actions, initialState, goalState);
+            _goapPlanner = new GoapPlanner(actions, initialState, goalState);
 
-        return _goapPlanner.StartPlanner(startingPos);
+            return _goapPlanner.StartPlanner(startingPos);
+        }
     }
 }
 
